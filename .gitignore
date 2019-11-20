@@ -81,4 +81,7 @@ typings/
 # DynamoDB Local files
 .dynamodb/
 
+# nedb files
+.main.db
+
 ### [END] https://github.com/github/gitignore/blob/master/Node.gitignore

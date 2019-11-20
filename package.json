@@ -51,6 +51,6 @@
   "dependencies": {
     "@slack/client": "^5.0.2",
     "dotenv": "^8.2.0",
-    "nedb-async": "0.0.9"
+    "nedb-async": "0.1.3"
   }
 }

@@ -51,8 +51,11 @@ const findMembers = async (nedb, clusterName) => {
     const gotCluster = await nedb.asyncFindOne({
       cluster_name: clusterName
     });
-    return gotCluster.members;
+    if (gotCluster) {
+      return gotCluster.members;
+    }
   }
+  return "";
 };
 
 module.exports = {

@@ -108,7 +108,7 @@ const nedb = require('./lib/model/_nedb')(
  */
 const slackMsgRegExp = {
   update: new RegExp(`^${EMOJI}( |)update( |)(([a-z]||-|_|[0-9])+)( |)((<@U(([A-Z]|[0-9])+)>( |))*)$`, 'i'),
-  mention: new RegExp(`^${EMOJI}( |)mention( |)(([a-z]||-|_|[0-9])+)( |)(.+)$`, 'i'),
+  mention: new RegExp(`^:fries: mention`, 'i'),
   invite: new RegExp(`^${EMOJI}( |)invite( |)(([a-z]||-|_|[0-9])+)$`, 'i'),
   kick: new RegExp(`^${EMOJI}( |)kick( |)(([a-z]||-|_|[0-9])+)$`, 'i'),
   list: new RegExp(`^${EMOJI}( |)list$`, 'i')
@@ -142,7 +142,6 @@ rtmClient.on('message', (event) => {
 });
 
 rtmClient.start();
-
 /**
  * The function of this command is to register, update, and delete a cluster.
  * @param {Object} slackEvent
@@ -154,6 +153,7 @@ const updateCmd = async (slackEvent) => {
   const membersArray = args.filter((arg) => {
     return (arg[0] === 'U');
   });
+
   const resultOfUpdated = await cluster.update(nedb, gotClusterName, membersArray);
   console.log(resultOfUpdated);
   await replyToThread(slackEvent.channel, slackEvent.ts, `${resultOfUpdated.message}: ${resultOfUpdated.cluster_name}`);
@@ -165,21 +165,24 @@ const updateCmd = async (slackEvent) => {
  * @async
  */
 const mentionCmd = async (slackEvent) => {
-  const gotClusterName = slackEvent.text.split(/mention/i)[1].trim().split(' ')[0].trim();
-  const msgForSending = slackEvent.text.split(gotClusterName)[1].trim().toString();
-  const targetCluster = await cluster.find(nedb, gotClusterName);
-  if (targetCluster) {
-    for (const memberId of targetCluster.members) {
+  const clusterName = event.text.split(/mention/i)[1].trim().split(' ')[0].trim();
+  const msgForSending = event.text.split(clusterName)[1].trim().toString();
+
+  const targetCluster = await cluster.findMembers(nedb, clusterName);
+
+  if (targetCluster.length !== 0) {
+    for (memberId of targetCluster) {
       const dmChannel = await webClientForUI.im.open({
         user: memberId
       });
       await webClientForUI.chat.postMessage({
-        channel: dmChannel.channel.id,
-        text: `${msgForSending}\nhttps://${SLACK_WORKSPACE}/archives/${slackEvent.channel}/p${slackEvent.ts}`
+        text: `${msgForSending} https://${SLACK_WORKSPACE}/archives/${event.channel}/p${event.event_ts}`,
+        channel: dmChannel.channel.id
       });
     }
   } else {
-    replyToThread(slackEvent.channel, slackEvent.ts, 'This cluster is not found');
+    const msg = "Please make sure the cluster name is correct!!."
+    replyToThread(event.channel, slackEvent.ts, msg);
   }
 };
 

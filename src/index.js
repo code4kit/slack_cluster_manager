@@ -108,10 +108,10 @@ const nedb = require('./lib/model/_nedb')(
  */
 const slackMsgRegExp = {
   update: new RegExp(`^${EMOJI}( |)update( |)(([a-z]||-|_|[0-9])+)( |)((<@U(([A-Z]|[0-9])+)>( |))*)$`, 'i'),
-  mention: new RegExp(`^:fries: mention`, 'i'),
+  mention: new RegExp(`^${EMOJI} mention`, 'i'),
   invite: new RegExp(`^${EMOJI}( |)invite( |)(([a-z]||-|_|[0-9])+)$`, 'i'),
-  kick: new RegExp(`^${EMOJI}( |)kick( |)(([a-z]||-|_|[0-9])+)$`, 'i'),
-  list: new RegExp(`^${EMOJI}( |)list$`, 'i')
+  kick: new RegExp(`^${EMOJI} kick`, 'i'),
+  list: new RegExp(`^${EMOJI} list$`, 'i')
 };
 
 rtmClient.on('message', (event) => {
@@ -170,8 +170,8 @@ const mentionCmd = async (slackEvent) => {
 
   const targetCluster = await cluster.findMembers(nedb, clusterName);
 
-  if (targetCluster.length !== 0) {
-    for (memberId of targetCluster) {
+  if (targetCluster) {
+    for (memberId of targetCluster.members) {
       const dmChannel = await webClientForUI.im.open({
         user: memberId
       });
@@ -244,55 +244,85 @@ const inviteCmd = async (slackEvent) => {
  */
 const kickCmd = async (slackEvent) => {
   const gotClusterName = slackEvent.text.split(/kick/i)[1].trim().split(' ')[0].trim();
-  const targetCluster = await cluster.find(nedb, gotClusterName);
+  const targetCluster = await cluster.findMembers(nedb, gotClusterName);
+
   if (!targetCluster) {
     replyToThread(slackEvent.channel, slackEvent.ts, 'This cluster is not found');
   } else {
-    const channelMembers = await webClient.conversations.members({
+
+    const channel = await webClient.conversations.members({
       channel: slackEvent.channel
     });
-    const notExistSlackManager = channelMembers.members.indexOf(SLACK_USER_ID) === -1;
-    if (notExistSlackManager) {
-      await webClient.channel.join({
-        user: SLACK_USER_ID,
-        channel: slackEvent.channel
-      }).catch(err => console.log(err));
-      await webClient.conversations.kick({
-        channel: slackEvent.channel,
-        users: channelMembers.join(',')
-      }).catch(err => console.log(err));
-      await webClient.channel.leave({
-        user: SLACK_USER_ID,
-        channel: slackEvent.channel
-      }).catch(err => console.log(err));
-    } else {
-      await webClient.conversations.kick({
-        channel: slackEvent.channel,
-        users: channelMembers.join(',')
-      }).catch(err => console.log(err));
+
+    const notExistSlackManager = channel.members.indexOf(SLACK_USER_ID) === -1;
+
+    let targetKickMember = []
+    for (member of channel.members) {
+      if (targetCluster.members.includes(member)) {
+        targetKickMember.push(member)
+      }
     }
-    const dmId = await webClient.im.open({
-      user: slackEvent.user
-    });
-    await webClient.chat.postMessage({
-      channel: dmId.channel.id,
-      text: 'This kick command is success ＾＾'
-    });
+    if (notExistSlackManager) {
+      await webClient.conversations.join({
+        user: SLACK_USER_ID,
+        channel: slackEvent.channel
+      }).catch(err => console.log(err));
+
+      kickMembers(targetKickMember, slackEvent);
+    } else {
+      kickMembers(targetKickMember, slackEvent);
+    }
+
   }
 };
+
+const kickMembers = async (targetKickMember, slackEvent) => {
+  let channel_name = await webClient.channels.info({
+    channel: slackEvent.channel
+  });
+  channel_name = channel_name.channel.name;
+
+
+  for (member of targetKickMember) {
+    if (member != slackEvent.user) {
+      await webClient.conversations.kick({
+        channel: slackEvent.channel,
+        user: member
+      }).then(async () => {
+        const dmChannel = await webClientForUI.im.open({
+          user: member
+        });
+        await webClientForUI.chat.postMessage({
+          text: `You got kicked from channel ${channel_name}`,
+          icon_emoji: EMOJI,
+          channel: dmChannel.channel.id
+        });
+      }).catch(err => console.log(err));
+
+    } else if (member == slackEvent.user) {
+      await webClient.conversations.leave({
+        channel: slackEvent.channel
+      });
+    }
+
+  };
+};
+
 /**
  * The object of list command display all cluster.
  * @param {Object} slackEvent
  * @async
  */
 const listCmd = async (slackEvent) => {
+  const gotClusterName = slackEvent.text.split(/list/i)[1].trim().split(' ')[0].trim();
   if (slackEvent.channel[0] !== 'D') {
     replyToThread(slackEvent.channel, slackEvent.ts, 'This cmd only DM.');
     return;
   }
-  const infoAllCluster = cluster.find(nedb);
-  console.log(JSON.stringify(infoAllCluster));
-  replyToThread(slackEvent.channel, slackEvent.ts, JSON.stringify(infoAllCluster));
+  const infoAllCluster = await cluster.find(nedb, gotClusterName);
+  console.log(infoAllCluster);
+  const msg = JSON.stringify(infoAllCluster)
+  replyToThread(slackEvent.channel, slackEvent.ts, msg);
 };
 
 /**

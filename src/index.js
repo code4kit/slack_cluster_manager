@@ -103,16 +103,20 @@ const nedb = require('./lib/model/_nedb')(
   SYSTEM_MODE
 );
 
+
+
 /**
  * @type {{String: RegExp}}
  */
 const slackMsgRegExp = {
-  update: new RegExp(`^${EMOJI}( |)update( |)(([a-z]||-|_|[0-9])+)( |)((<@U(([A-Z]|[0-9])+)>( |))*)$`, 'i'),
+  update: new RegExp(`^:fries: update (.+)`),
   mention: new RegExp(`^${EMOJI} (mention [A-Z]|[0-9])`, 'i'),
-  invite: new RegExp(`^${EMOJI}( |)invite( |)(([a-z]||-|_|[0-9])+)$`, 'i'),
+  invite: new RegExp(`^${EMOJI} invite (.+)`),
   kick: new RegExp(`^${EMOJI} (kick [A-Z]|[0-9])`, 'i'),
   list: new RegExp(`^${EMOJI} (list [A-Z]|[0-9])|list$`, 'i')
 };
+
+
 
 rtmClient.on('message', (event) => {
   if (event.user === SLACK_BOT_ID || !('text' in event)) {
@@ -141,23 +145,38 @@ rtmClient.on('message', (event) => {
   }
 });
 
+
+
 rtmClient.start();
+
+
+
 /**
  * The function of this command is to register, update, and delete a cluster.
  * @param {Object} slackEvent
  * @async
  */
 const updateCmd = async (slackEvent) => {
-  const args = slackEvent.text.trim().split(/update|<@|>/);
-  const gotClusterName = args[1].trim();
-  const membersArray = args.filter((arg) => {
-    return (arg[0] === 'U');
-  });
+  try {
+    const args = slackEvent.text.trim().split(/update|<@|>/);
+    const gotClusterName = args[1].trim();
+    const membersArray = args.filter((arg) => {
+      return (arg[0] === 'U');
+    });
 
-  const resultOfUpdated = await cluster.update(nedb, gotClusterName, membersArray);
-  console.log(resultOfUpdated);
-  await replyToThread(slackEvent.channel, slackEvent.ts, `${resultOfUpdated.message}: ${resultOfUpdated.cluster_name}`);
+    if (gotClusterName.match(new RegExp('^[a-z0-9\-\_]+$'))) {
+      const resultOfUpdated = await cluster.update(nedb, gotClusterName, membersArray);
+      console.log(resultOfUpdated);
+      await replyToThread(slackEvent.channel, slackEvent.ts, `${resultOfUpdated.message}: ${resultOfUpdated.cluster_name}`);
+    } else {
+      await replyToThread(slackEvent.channel, slackEvent.ts, `<${gotClusterName}> is an invalid cluster name.`)
+    }
+  } catch (error) {
+    console.log(`Unable to trim <${slackEvent.text}>`)
+  }
 };
+
+
 
 /**
  * the function of this command is to send message to chosen cluster.
@@ -187,6 +206,8 @@ const mentionCmd = async (slackEvent) => {
   }
 };
 
+
+
 /**
  * the object of this command is to invite registered members in a cluster for channel
  * @param {Object} slackEvent
@@ -202,14 +223,13 @@ const inviteCmd = async (slackEvent) => {
   });
   const clusterMembers = await cluster.findMembers(nedb, gotClusterName);
   const notExistManagerInSlack = channelInfo.channel.members.indexOf(SLACK_USER_ID) === -1;
-  console.log(channelInfo.channel.members);
-  const ExistManagerInCluster = clusterMembers.filter((user) => {
+  const ExistManagerInCluster = clusterMembers.members.filter((user) => {
     return (user === SLACK_USER_ID);
   });
-  const exceptManagerAndInviter = clusterMembers.filter((user) => { return (user !== SLACK_USER_ID && user !== slackEvent.user); }).join(',');
-  console.log(notExistManagerInSlack);
+  const exceptManagerAndInviter = clusterMembers.members.filter((user) => { return (user !== SLACK_USER_ID && user !== slackEvent.user); }).join(',');
+
   if (notExistManagerInSlack && ExistManagerInCluster.length) {
-    console.log('ue');
+    // manger in cluster but not channel
     await webClientLegacy.channels.join({
       name: `#${channelInfo.channel.name}`
     });
@@ -218,7 +238,7 @@ const inviteCmd = async (slackEvent) => {
       channel: slackEvent.channel
     });
   } else if (notExistManagerInSlack) {
-    console.log('Just Inside!!');
+    // manager not in cluster and channel
     await webClientLegacy.channels.join({
       name: `#${clusterMembers}`
     });
@@ -229,16 +249,18 @@ const inviteCmd = async (slackEvent) => {
     await webClient.channels.leave({
       user: SLACK_USER_ID,
       channel: slackEvent.channel
-    });
+    }).catch(e => console.log(e));
   } else {
-    console.log('sita');
     await webClientLegacy.conversations.invite({
-      users: clusterMembers.join(','),
-      channel: channelInfo.channel.name
-    });
+      users: exceptManagerAndInviter,
+      channel: channelInfo.channel.id
+    }).catch(e => console.log(e));
   }
-  replyToThread(slackEvent.channel, slackEvent.ts, 'Invitation is completed.');
+  replyToThread(slackEvent.channel, slackEvent.ts, 'Invitation Complete!');
 };
+
+
+
 /**
  *the object of kick command is to evacuate all registered members in cluster from channel.
  * @param {Object} slackEvent
@@ -264,6 +286,7 @@ const kickCmd = async (slackEvent) => {
 };
 
 
+
 const kickMembers = async (memberId, slackEvent) => {
   const channel_name = await getChannelName(slackEvent);
   if (memberId !== slackEvent.user) {
@@ -285,6 +308,7 @@ const kickMembers = async (memberId, slackEvent) => {
 };
 
 
+
 const getChannelName = async (slackEvent) => {
   let channel_name = await webClient.channels.info({
     channel: slackEvent.channel
@@ -302,6 +326,8 @@ const directMessage = async (userId, msg) => {
     channel: dmChannel.channel.id
   });
 };
+
+
 
 /**
  * The object of list command display all cluster.
@@ -329,6 +355,8 @@ const listCmd = async (slackEvent) => {
   }
 };
 
+
+
 /**
  *
  * @param {String} ch
@@ -344,6 +372,8 @@ const replyToThread = (ch, ts, msg) => {
     text: msg
   });
 };
+
+
 
 /**
  * createServer

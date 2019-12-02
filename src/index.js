@@ -148,15 +148,23 @@ rtmClient.start();
  * @async
  */
 const updateCmd = async (slackEvent) => {
-  const args = slackEvent.text.trim().split(/update|<@|>/);
-  const gotClusterName = args[1].trim();
-  const membersArray = args.filter((arg) => {
-    return (arg[0] === 'U');
-  });
+  try {
+    const args = slackEvent.text.trim().split(/update|<@|>/);
+    const gotClusterName = args[1].trim();
+    const membersArray = args.filter((arg) => {
+      return (arg[0] === 'U');
+    });
 
-  const resultOfUpdated = await cluster.update(nedb, gotClusterName, membersArray);
-  console.log(resultOfUpdated);
-  await replyToThread(slackEvent.channel, slackEvent.ts, `${resultOfUpdated.message}: ${resultOfUpdated.cluster_name}`);
+    if (gotClusterName.match(new RegExp('^[a-z0-9\-\_]+$'))) {
+      const resultOfUpdated = await cluster.update(nedb, gotClusterName, membersArray);
+      console.log(resultOfUpdated);
+      await replyToThread(slackEvent.channel, slackEvent.ts, `${resultOfUpdated.message}: ${resultOfUpdated.cluster_name}`);
+    } else {
+      await replyToThread(slackEvent.channel, slackEvent.ts, `<${gotClusterName}> is an invalid cluster name.`)
+    }
+  } catch (error) {
+    console.log(`Unable to trim <${slackEvent.text}>`)
+  }
 };
 
 /**

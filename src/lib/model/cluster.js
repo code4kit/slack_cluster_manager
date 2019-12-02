@@ -11,23 +11,28 @@
 // console.log(check);
 const update = async (nedb, clusterName, memberIds) => {
   const targetCluster = await nedb.asyncFindOne({ cluster_name: clusterName });
-  if (!targetCluster) {
-    await nedb.asyncInsert({
-      cluster_name: clusterName,
-      members: memberIds
-    });
-    return { message: 'created', cluster_name: clusterName };
-  }
   if (memberIds.length === 0) {
     await nedb.asyncRemove({ cluster_name: clusterName }, {});
     return { message: 'deleted', cluster_name: clusterName };
+  } else {
+    if (!targetCluster) {
+      await nedb.asyncInsert({
+        cluster_name: clusterName,
+        members: memberIds
+      });
+      return { message: 'created', cluster_name: clusterName };
+    } else {
+      const existMemberIds = await nedb.asyncFindOne({ cluster_name: clusterName })
+      await nedb.asyncUpdate({
+        cluster_name: clusterName
+      }, {
+        $set: { members: [...existMemberIds.members, ...memberIds] }
+      });
+      return { message: 'updated', cluster_name: clusterName };
+    }
   }
-  await nedb.asyncUpdate({
-    cluster_name: clusterName
-  }, {
-    $set: { members: memberIds }
-  });
-  return { message: 'updated', cluster_name: clusterName };
+
+
 };
 
 /**

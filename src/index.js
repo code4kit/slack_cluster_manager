@@ -109,7 +109,7 @@ const nedb = require('./lib/model/_nedb')(
  * @type {{String: RegExp}}
  */
 const slackMsgRegExp = {
-  update: new RegExp(`^:fries: update (.+)`),
+  update: new RegExp(`^${EMOJI} update (.+)`),
   mention: new RegExp(`^${EMOJI} (mention [A-Z]|[0-9])`, 'i'),
   invite: new RegExp(`^${EMOJI} invite (.+)`),
   kick: new RegExp(`^${EMOJI} (kick [A-Z]|[0-9])`, 'i'),
@@ -218,44 +218,17 @@ const inviteCmd = async (slackEvent) => {
   if (!targetCluster) {
     return replyToThread(slackEvent.channel, slackEvent.ts, 'This cluster is not found');
   }
-  const channelInfo = await webClientForUI.channels.info({
+  const existingMember = await webClient.conversations.members({
     channel: slackEvent.channel
   });
   const clusterMembers = await cluster.findMembers(nedb, gotClusterName);
-  const notExistManagerInSlack = channelInfo.channel.members.indexOf(SLACK_USER_ID) === -1;
-  const ExistManagerInCluster = clusterMembers.members.filter((user) => {
-    return (user === SLACK_USER_ID);
+  const inviteMembers = clusterMembers.members.filter((member) => {
+    if (!existingMember.members.includes(member)) return member;
   });
-  const exceptManagerAndInviter = clusterMembers.members.filter((user) => { return (user !== SLACK_USER_ID && user !== slackEvent.user); }).join(',');
-
-  if (notExistManagerInSlack && ExistManagerInCluster.length) {
-    // manger in cluster but not channel
-    await webClientLegacy.channels.join({
-      name: `#${channelInfo.channel.name}`
-    });
-    await webClientLegacy.conversations.invite({
-      users: exceptManagerAndInviter,
-      channel: slackEvent.channel
-    });
-  } else if (notExistManagerInSlack) {
-    // manager not in cluster and channel
-    await webClientLegacy.channels.join({
-      name: `#${clusterMembers}`
-    });
-    await webClientLegacy.conversations.invite({
-      channel: slackEvent.channel,
-      users: exceptManagerAndInviter
-    });
-    await webClient.channels.leave({
-      user: SLACK_USER_ID,
-      channel: slackEvent.channel
-    }).catch(e => console.log(e));
-  } else {
-    await webClientLegacy.conversations.invite({
-      users: exceptManagerAndInviter,
-      channel: channelInfo.channel.id
-    }).catch(e => console.log(e));
-  }
+  await webClientLegacy.conversations.invite({
+    users: inviteMembers.join(","),
+    channel: slackEvent.channel
+  });
   replyToThread(slackEvent.channel, slackEvent.ts, 'Invitation Complete!');
 };
 
@@ -302,8 +275,6 @@ const kickMembers = async (memberId, slackEvent) => {
     await webClient.conversations.leave({
       channel: slackEvent.channel
     }).catch((error) => console.log(error));
-    const message = `You are leaving the ${channel_name}`;
-    directMessage(slackEvent.user, message);
   }
 };
 

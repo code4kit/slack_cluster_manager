@@ -16,6 +16,8 @@ const httpServer = require("./lib/http_server");
 const { WebClient, RTMClient } = require("@slack/client");
 const cluster = require("./lib/model/cluster");
 const packageInfo = require("../package.json");
+const CronJob = require("cron").CronJob;
+const fetch = require("fetch").fetchUrl;
 
 // Environment Variables
 const PORT = process.env.PORT;
@@ -377,3 +379,11 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`listening to PORT:${PORT}`);
 });
+
+const job = new CronJob("* * * * * *", () => {
+  fetch("https://www.temp-scm.glitch.me", (error, meta, body) => {
+    console.log(body);
+  });
+});
+
+job.start();

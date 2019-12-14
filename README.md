@@ -32,7 +32,6 @@ yarn start
 ```sh
 yarn test
 ```
-
 ## Author
 
 👤 **code4kit**

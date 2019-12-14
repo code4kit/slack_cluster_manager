@@ -1,2 +1,4 @@
-{"cluster_name":"b-8","members":["UQECT0TDM","UQ6QPE6HX"],"_id":"VAEMsi9F4eDtWzfz"}
-{"cluster_name":"b-7","members":["UQ6QPE6HX","UQECT0TDM","UQ49W2SHE"],"_id":"peLwbBaJqax1M6gD"}
+{"cluster_name":"c4k","isVC":false,"isBatch":true,"members":["UQGDF7QKV","UQUN7JTJ4","UQUTVMUEL","URP7DS1U4"],"_id":"5FWapcCtxAYKQ2E5"}
+{"cluster_name":"batch-10","isVC":false,"isBatch":true,"members":[],"_id":"BefLaAD818dVMdTl"}
+{"cluster_name":"b-6","isVC":true,"isBatch":false,"members":["UQGDF7QKV","UQUN7JTJ4","UQUTVMUEL"],"_id":"PYesLAtSKKJbUeLV"}
+{"cluster_name":"hello","isVC":false,"isBatch":false,"members":[],"_id":"vVH0maEipT9ayBZa"}

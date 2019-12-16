@@ -19,6 +19,14 @@ const CronJob = require("cron").CronJob;
 const fetch = require("fetch").fetchUrl;
 
 /**
+ * This connect to NeDB
+ * @param {String}
+ */
+const DB_PATH = process.env.DB_PATH;
+const SYSTEM_MODE = process.env.SYSTEM_MODE;
+const nedb = require("./lib/model/_nedb")(DB_PATH, SYSTEM_MODE);
+
+/**
  * post number
  * @type {Number}
  */
@@ -33,7 +41,7 @@ const SLACK_BOT_ID = process.env.SLACK_BOT_ID;
  * @type {{String: RegExp}}
  */
 const slackMsgRegExp = {
-  delete: new RegExp(`^${EMOJI} delete (.+)`, "gi"),
+  remove: new RegExp(`^${EMOJI} remove (.+)`, "gi"),
   create: new RegExp(`^${EMOJI} create (.+)`, "gi"),
   update: new RegExp(`^${EMOJI} update (.+) (.+)`, "gi"),
   mention: new RegExp(`^${EMOJI} mention (.+) (.+)`, "gi"),
@@ -48,8 +56,8 @@ rtmClient.on("message", event => {
   }
   if (event.text.match(slackMsgRegExp.create)) {
     slackCommand.createCluster(event);
-  } else if (event.text.match(slackMsgRegExp.delete)) {
-    slackCommand.deleteCluster(event);
+  } else if (event.text.match(slackMsgRegExp.remove)) {
+    slackCommand.removeCluster(event);
   } else if (event.text.match(slackMsgRegExp.update)) {
     slackCommand.updateMembers(event);
   } else if (event.text.match(slackMsgRegExp.mention)) {

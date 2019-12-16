@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 /**
  * @async
@@ -8,38 +8,27 @@
  * @return {{message: String, cluster_name: String}}
  */
 
-const update = async (nedb, clusterName, memberIds, isVirtualCompany) => {
-  const targetCluster = await nedb.asyncFindOne({ cluster_name: clusterName });
-  if (memberIds.length === 0) {
-    await nedb.asyncRemove({ cluster_name: clusterName }, {});
-    return { message: "deleted", cluster_name: clusterName };
-  } else {
-    if (!targetCluster) {
-      await nedb.asyncInsert({
-        cluster_name: clusterName,
-        is_virtual_company: isVirtualCompany,
-        members: memberIds
-      });
-      return { message: "created", cluster_name: clusterName };
-    } else {
-      const existMemberIds = await nedb.asyncFindOne({
-        cluster_name: clusterName
-      });
+const update = async (nedb, clusterName, memberIds) => {
+  const existCluster = await nedb.asyncFindOne({
+    cluster_name: clusterName
+  }).catch((err) => {
+    console.log(err);
+  });
 
-      const membersSet = new Set([...existMemberIds.members, ...memberIds]);
-      await nedb.asyncUpdate(
-        {
-          cluster_name: clusterName
-        },
-        {
-          $set: {
-            members: [...membersSet],
-            is_virtual_company: isVirtualCompany
-          }
-        }
-      );
-      return { message: "updated", cluster_name: clusterName };
-    }
+  if (!existCluster) {
+    return `:warning: Cluster ${clusterName} not exist.`;
+  } else if (memberIds.length === 0) {
+    return ':warning: Please Provide the memebers.';
+  } else {
+    const existMemberIds = existCluster.members;
+    memberIds = memberIds.filter((member) => !existMemberIds.includes(member));
+    const updateMembers = existMemberIds.length !== 0 ? [...existMemberIds, ...memberIds] : [...memberIds];
+    await nedb.asyncUpdate({
+      cluster_name: clusterName
+    }, {
+      $set: { members: updateMembers }
+    });
+    return `:tada: updated members to cluster ${clusterName}`;
   }
 };
 
@@ -66,11 +55,48 @@ const findMembers = async (nedb, clusterName) => {
     });
     return gotCluster;
   }
-  return "";
+};
+
+const createCluster = async (nedb, clusterName) => {
+  const isVC = clusterName.includes('--vc');
+  const isBatch = clusterName.includes('--batch');
+  clusterName = isVC || isBatch ? clusterName.replace(/\s--batch|\s--vc/, '').trim() : clusterName;
+  const exist = await nedb.asyncFindOne({
+    cluster_name: clusterName
+  }).catch((error) => {
+    console.log(error);
+  });
+  if (exist) {
+    return `:warning: Cluster ${clusterName} aleady exist.`;
+  }
+  await nedb.asyncInsert({
+    cluster_name: clusterName,
+    isVC,
+    isBatch,
+    members: []
+  }).catch((err) => {
+    console.log(err);
+  });
+  return `:tada: created cluster ${clusterName}.`;
+};
+
+const deleteCluster = async (nedb, clusterName) => {
+  const res = await nedb.asyncRemove({
+    cluster_name: clusterName
+  }, {}).catch((err) => {
+    console.log(err);
+  });
+  if (res) {
+    return `:tada: deteled cluster ${clusterName}.`;
+  } else {
+    return `:warning: Can not find cluster ${clusterName}.`;
+  }
 };
 
 module.exports = {
   update,
   find,
-  findMembers
+  findMembers,
+  createCluster,
+  deleteCluster
 };

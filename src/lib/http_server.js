@@ -15,6 +15,8 @@ const main = (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/html; charset=utf-8'
   });
+  res.write('created server');
+  res.end();
 };
 
 module.exports = main;

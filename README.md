@@ -1,4 +1,4 @@
-# Welcome to slack_cluster_manager 👋
+# Slack Cluster Manager (EN)
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg?cacheSeconds=2592000)
 ![Prerequisite](https://img.shields.io/badge/yarn-%3E%3D1.19.1-blue.svg)
@@ -7,16 +7,18 @@
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/code4kit/slack-cluster-manager/graphs/commit-activity)
 [![License: MIT](https://img.shields.io/github/license/code4kit/slack_cluster_manager)](https://github.com/code4kit/slack-cluster-manager/blob/master/LICENSE)
 
-> This bot can manage cluster in slack. \*Cluster is like group and list in slack.
+<!-- Description -->
+A bot that provide an easier way to add or remove **clusters** from the database.
 
-### 🏠 [Homepage](https://github.com/code4kit/slack-cluster-manager#readme)
+
+> cluster is an object in the database that store channel property.
+
 
 ## Prerequisites
-
 - yarn >=1.19.1
 - node >=12.11.1
 
-## Install
+## Installation
 
 ```sh
 yarn
@@ -28,84 +30,159 @@ yarn
 yarn start
 ```
 
-## Run tests
+## Test
 
 ```sh
 yarn test
 ```
 
-## Usage Slack Command
+## COMMAND Usage
 
-#### 1. CREATE command
 
-- create cluster without specify any type
+## 1. About :fries: **create**  command
+```
+:fries: create cluster_name --flag
+```
 
-  :fries: `create clusterName`
+### How does it work?
+1. First, check cluster name existence in the database:
+	+ If it already exists, notify user via direct message that a new record can't be added to the database.
+	+ If it doesn't exist, check the flag after cluster name.
+    
+2. Different types of flag in the command:
+	+ If `--vc` flag is presented in the command, `isVC` property in the database will be true and vice versa.
+	+ If `--batch` flag is presented in the command, `isBatch` property in the database will be true and vice versa.
 
-- create cluster by specifying whether the cluster is a batch or vc
+### EXAMPLE
 
-  :fries: `create clusterName --batch`
+> :fries: create c4k --vc 
+```
+=> {"name": 'c4k', "isVC": true, "isBatch": false, "members": [], "_id": '1'}
+```
 
-  :fries: `create clusterName --vc`
+> :fries: create b-6 --batch 
+```
+=> {"name": 'b-6', "isVC": false, "isBatch": true, "members": [], "_id": '1'}
+```
 
-#### 2. REMOVE command
+> :fries: create b-6 :negative_squared_cross_mark: 
 
-- remove the entire cluster
+> :fries: create b-6 --vc --batch :negative_squared_cross_mark: 
 
-  :fries: `remove clusterName`
+**NOTE:** 
+1. Only authorized users can use this command.
+2. A cluster must have either `--vc` or `--batch` flag. It can't be both.
 
-- remove members from specific cluster
+---
 
-  :fries: `create clusterName --batch`
+## 2. About :fries: **update**  command
+```
+:fries: update cluster_name @userA @userB @userC
+```
 
-  :fries: `create clusterName --vc`
+### How does it work?
+Check cluster name existence in the database:
++ If it doesn't exist, notify user via direct message that record can't be updated in the database.
++ If it exists, add members to the database with no duplicate of the old members.
 
-#### 3. UPDATE command (add member to cluster)
 
-- Add single member
+### EXAMPLE
 
-:fries: `update clusterName @slackUserName`
+> :fries: update b-6 @userA @userB @userC
 
-- Add multiple members
+```
+=> {"name": 'b-6', "isVC": false, "isBatch": true, "members": [UQECTBTDX, UDECTATDM, UQEDTXTDM], "_id": '1'}
+```
 
-:fries: `update clusterName @slackUserName @slackUserName`
+>:fries: update b-6 @here
 
-- Add everyone in the channel
+```
+{"name": 'b-6', "isVC": false, "isBatch": true, "members": [all_slack_users_id_in_current_channel], "_id": '1'}
+```
 
-:fries: `update clusterName @here`
+**NOTE:** Only authorized users can use this command.
 
-:notebook: Only the Authorize user can use the first three commands (create, update, remove).
+---
 
-#### 4. MENTION every cluster members
+## 3. About :fries: **remove**  command
+```
+:fries: remove cluster_name @userA @userB @userC
+```
 
-:fries: `mention cluseterName message`
+### How does it work?
+Check cluster name existence in the database.
++ If it doesn't already exist, notify user via direct message that record can't be removed in the database .
++ If it exists, remove members that are mentioned in the command. If there's no members mentioned in the command, remove the entire cluster from database.
 
-- **EXAMPLE**
-  :fries: `mention c4k just do it`
+### EXAMPLE
 
-#### 5. INVITE every cluster members to a channel
+> :fries: remove b-6 @userA
+ 
+```
+=> {"name": 'b-6', "isVC": true, "isBatch": false, "members": [old_members_except_@userA_slack_id], "_id": '1'}
+```
 
-:fries: `invite clustName`
+> :fries: remove b-6 
 
-- **EXAMPLE**
-  :fries: `invite c4k`
+=> remove `b-6` cluster from database.
 
-#### 6. KICK every cluster members from a channel
+**NOTE:** Only authorized users can use this command.
 
-:fries: `kick clusterName`
+---
 
-- **EXAMPLE**
-  :fries: `kick c4k`
+## 4. About :fries: **mention**  command
+```
+:fries: mention cluster_name text
+```
 
-#### 7. LIST every cluster members (only DM)
+### How does it work?
+Check cluster name existence in the database.
++ If it doesn't exist, notify user via direct message.
++ If it exists, send ***text*** to each members in the cluster individually.
 
-- List one cluster
+### EXAMPLE
 
-  :fries: `list clusterName`
+> :fries: mention b-6 "hello world"
 
-- List all clusters members
+=> send "hello world" as direct message to everyone in `b-6` cluster.
 
-  :fries: `list`
+---
+
+## 5. About :fries: **invite**  command
+```
+:fries: invite cluster_name
+```
+
+### How does it work?
+Check cluster name existence in the database.
++ If it doesn't exist, notify user via direct message about invalid cluster name.
++ If it exists, invite all members in the cluster to current channel.
+
+---
+
+## 6. About :fries: **kick**  command
+```
+:fries: kick cluster_name
+```
+
+### How does it work?
+Check cluster name existence in the database.
++ If it doesn't exist, notify user via direct message about invalid cluster name.
++ If it exists, kick all members in the cluster to current channel.
+
+---
+
+## 7. About :fries: **list**  command
+```
+:fries: list cluster_name
+```
+
+### How does it work?
+Check cluster name existence in the command.
++ If there's no cluster_name, sent a direct message containing API link of all clusters.
++ If cluster_name(s) is presented in the command, send a direct message containing only those clusters API link(s).
+
+---
 
 ## Author
 
@@ -131,5 +208,3 @@ Copyright © 2019 [code4kit](https://github.com/code4kit).
 This project is [MIT](https://github.com/code4kit/slack-cluster-manager/blob/master/LICENSE) licensed.
 
 ---
-
-_This README was generated with ❤️ by [readme-md-generator](https://github.com/kefranabg/readme-md-generator)_

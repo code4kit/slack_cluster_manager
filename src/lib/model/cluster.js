@@ -63,86 +63,44 @@ const findMembers = async (nedb, clusterName) => {
     const gotCluster = await nedb.asyncFindOne({
       cluster_name: clusterName
     });
-
+    
     return gotCluster;
   }
 };
 
 const createCluster = async (nedb, clusterName) => {
-  const isVC = clusterName.includes("--vc");
-  const isBatch = clusterName.includes("--batch");
-
-  clusterName =
-    isVC || isBatch
-      ? clusterName.replace(/\s--batch|\s--vc/, "").trim()
-      : clusterName;
-
-  const existCluster = await nedb
-    .asyncFindOne({
-      cluster_name: clusterName
-    })
-    .catch(error => {
-      console.log(error);
-    });
-
-  if (existCluster) {
-    return `:warning: cluster ${clusterName} already exists.`;
+  const isVC = clusterName.includes('--vc');
+  const isBatch = clusterName.includes('--batch');
+  clusterName = isVC || isBatch ? clusterName.replace(/\s--batch|\s--vc/, '').trim() : clusterName;
+  const exist = await nedb.asyncFindOne({
+    cluster_name: clusterName
+  }).catch((error) => {
+    console.log(error);
+  });
+  if (exist) {
+    return `:warning: Cluster ${clusterName} aleady exist.`;
   }
-  await nedb
-    .asyncInsert({
-      cluster_name: clusterName,
-      isVC,
-      isBatch,
-      members: []
-    })
-    .catch(err => {
-      console.log(err);
-    });
+  await nedb.asyncInsert({
+    cluster_name: clusterName,
+    isVC,
+    isBatch,
+    members: []
+  }).catch((err) => {
+    console.log(err);
+  });
   return `:tada: created cluster ${clusterName}.`;
 };
 
-const removeCluster = async (nedb, clusterName, memberIds) => {
-  const existCluster = await nedb
-    .asyncFindOne({
-      cluster_name: clusterName
-    })
-    .catch(error => {
-      console.log(error);
-    });
-
-  if (existCluster) {
-    if (memberIds.length === 0) {
-      const clusterDeletion = await nedb
-        .asyncRemove(
-          {
-            cluster_name: clusterName
-          },
-          {}
-        )
-        .catch(err => {
-          console.log(err);
-        });
-      if (clusterDeletion) {
-        return `:tada: deleted cluster ${clusterName}.`;
-      } else {
-        return `:warning: cannot find cluster ${clusterName}.`;
-      }
-    } else {
-      const existMemberIds = existCluster.members;
-      const membersToRemove = existMemberIds.filter(
-        member => !memberIds.includes(member)
-      );
-
-      await nedb.asyncUpdate(
-        {
-          cluster_name: clusterName
-        },
-        {
-          $set: { members: membersToRemove }
-        }
-      );
-      return `:tada: removed members in cluster ${clusterName}`;
-    }
+const deleteCluster = async (nedb, clusterName) => {
+  const res = await nedb.asyncRemove({
+    cluster_name: clusterName
+  }, {}).catch((err) => {
+    console.log(err);
+  });
+  if (res) {
+    return `:tada: deteled cluster ${clusterName}.`;
+  } else {
+    return `:warning: Can not find cluster ${clusterName}.`;
   }
 };
 
@@ -151,5 +109,5 @@ module.exports = {
   find,
   findMembers,
   createCluster,
-  removeCluster
+  deleteCluster
 };

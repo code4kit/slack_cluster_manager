@@ -206,5 +206,3 @@ Give a ⭐️ if this project helped you!
 Copyright © 2019 [code4kit](https://github.com/code4kit).
 
 This project is [MIT](https://github.com/code4kit/slack-cluster-manager/blob/master/LICENSE) licensed.
-
----

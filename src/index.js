@@ -41,13 +41,13 @@ const SLACK_BOT_ID = process.env.SLACK_BOT_ID;
  * @type {{String: RegExp}}
  */
 const slackMsgRegExp = {
-  remove: new RegExp(`^${EMOJI} remove (.+)`, "gi"),
-  create: new RegExp(`^${EMOJI} create (.+)`, "gi"),
-  update: new RegExp(`^${EMOJI} update (.+) (.+)`, "gi"),
-  mention: new RegExp(`^${EMOJI} mention (.+) (.+)`, "gi"),
-  invite: new RegExp(`^${EMOJI} invite (.+)`, "gi"),
-  kick: new RegExp(`^${EMOJI} kick (.+)`, "gi"),
-  list: new RegExp(`^${EMOJI} (list (.+))|list$`, "i")
+  delete: new RegExp(`^${EMOJI} delete (.+)`, 'gi'),
+  create: new RegExp(`^${EMOJI} create (.+)`, 'gi'),
+  update: new RegExp(`^${EMOJI} update (.+) (.+)`, 'gi'),
+  mention: new RegExp(`^${EMOJI} mention (.+) (.+)`, 'gi'),
+  invite: new RegExp(`^${EMOJI} invite (.+)`, 'gi'),
+  kick: new RegExp(`^${EMOJI} kick (.+)`, 'gi'),
+  list: new RegExp(`^${EMOJI} (list (.+))|list$`, 'i')
 };
 
 rtmClient.on("message", event => {
@@ -56,8 +56,8 @@ rtmClient.on("message", event => {
   }
   if (event.text.match(slackMsgRegExp.create)) {
     slackCommand.createCluster(event);
-  } else if (event.text.match(slackMsgRegExp.remove)) {
-    slackCommand.removeCluster(event);
+  } else if (event.text.match(slackMsgRegExp.delete)) {
+    slackCommand.deleteCluster(event);
   } else if (event.text.match(slackMsgRegExp.update)) {
     slackCommand.updateMembers(event);
   } else if (event.text.match(slackMsgRegExp.mention)) {

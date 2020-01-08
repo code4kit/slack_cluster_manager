@@ -39,90 +39,66 @@ const createCluster = async event => {
   const clusterName = event.text.split(/create/i)[1].trim();
   const isVC = clusterName.includes("--vc");
   const isBatch = clusterName.includes("--batch");
+
   if (!isBatch || !isVC) {
     const msg = await cluster.createCluster(nedb, clusterName);
     replyToThread(event.channel, event.event_ts, msg);
   } else {
-    replyToThread(
-      event.channel,
-      event.event_ts,
-      ":warning: Please using one flag only."
-    );
+    replyToThread(event.channel, event.event_ts, ':warning: Please using one flag only.');
   }
 };
 
-const removeCluster = async event => {
+const deleteCluster = async (event) => {
   if (!authorizeOnly(event)) {
-    return "unauthorized user.";
+    return '';
   }
-
-  const args = event.text.split(/remove|<@|>|<!/);
-  const clusterName = args[1].trim();
-  const targetCluster = await cluster.findMembers(nedb, clusterName);
-  const memberIds = args.filter(member => {
-    return targetCluster.members.includes(member);
-  });
-  const msg = await cluster.removeCluster(nedb, clusterName, memberIds);
+  const clusterName = event.text.split(/delete/i)[1].trim();
+  const msg = await cluster.deleteCluster(nedb, clusterName);
   replyToThread(event.channel, event.event_ts, msg);
 };
 
-const updateMembers = async event => {
+const updateMembers = async (event) => {
   if (!authorizeOnly(event)) {
-    return "unauthorized user.";
+    return '';
   }
-
   const args = event.text.split(/update|<@|>|<!/);
   const clusterName = args[1].trim();
   let slackMembers = await webClient.users.list({
     channel: event.channel
   });
-  slackMembers = slackMembers.members
-    .filter(member => !member.is_bot && member.id !== "USLACKBOT")
-    .map(member => member.id);
-  if (args.includes("here")) {
+  
+  slackMembers = slackMembers.members.filter((member) => !member.is_bot && member.id !== 'USLACKBOT').map(member => member.id);
+  if (args.includes('here')) {
     const msg = await cluster.update(nedb, clusterName, slackMembers);
     replyToThread(event.channel, event.event_ts, msg);
   } else {
-    const memberIds = args.filter(member => {
-      return slackMembers.includes(member);
-    });
+    const memberIds = args.filter((member) => { return slackMembers.includes(member); });
     const msg = await cluster.update(nedb, clusterName, memberIds);
     replyToThread(event.channel, event.event_ts, msg);
   }
 };
 
-const mentionCmd = async event => {
-  const clusterName = event.text
-    .split(/mention/i)[1]
-    .trim()
-    .split(" ")[0]
-    .trim();
-  const msgToSent = event.text
-    .split(clusterName)[1]
-    .trim()
-    .toString();
+const mentionCmd = async (event) => {
+  const clusterName = event.text.split(/mention/i)[1].trim().split(' ')[0].trim();
+  const msgForSending = event.text.split(clusterName)[1].trim().toString();
   const channel = event.channel;
   const threadTs = event.event_ts;
   const targetCluster = await cluster.findMembers(nedb, clusterName);
-  const message = `:information_source: ${msgToSent}\n :link: https://${SLACK_WORKSPACE}.slack.com/archives/${channel}/p${threadTs}`;
+  const message = `:information_source: ${msgForSending}\n :link: https://${SLACK_WORKSPACE}.slack.com/archives/${channel}/p${threadTs}`;
   if (targetCluster) {
     if (targetCluster.members.length !== 0) {
-      targetCluster.members.forEach(member => {
+      targetCluster.members.forEach((member) => {
         directMessage(member, message);
       });
     } else {
-      replyToThread(
-        channel,
-        threadTs,
-        ":warning: cluster members doesn't exist."
-      );
+      replyToThread(channel, threadTs, ':warning: Cluster Member does not exist.');
     }
   } else {
-    replyToThread(channel, threadTs, ":warning: cluster doesn't exist.");
+    replyToThread(channel, threadTs, ':warning:Cluster does not exist.');
   }
 };
 
-const inviteCmd = async event => {
+const inviteCmd = async (event) => {
   const clusterName = event.text.split(/invite/i)[1].trim();
   const targetCluster = await cluster.findMembers(nedb, clusterName);
   const channel = event.channel;
@@ -133,50 +109,32 @@ const inviteCmd = async event => {
       const existingMember = await webClient.conversations.members({
         channel
       });
-      let inviteMembers = targetCluster.members.filter(member => {
-        return (
-          !existingMember.members.includes(member) && member !== event.user
-        );
-      });
+      let inviteMembers = targetCluster.members.filter((member) => { return !existingMember.members.includes(member) && member !== event.user; });
       if (inviteMembers.length !== 0) {
         if (inviteMembers.includes(SLACK_USER_ID)) {
           await webClientLegacy.conversations.join({
             channel
           });
-          inviteMembers = inviteMembers.filter(member => {
-            return member !== SLACK_USER_ID;
-          });
+          inviteMembers = inviteMembers.filter((member) => { return member !== SLACK_USER_ID; });
         }
         await webClientLegacy.conversations.invite({
-          users: inviteMembers.join(","),
+          users: inviteMembers.join(','),
           channel
         });
-        replyToThread(channel, threadTs, ":tada: Successfully invited.");
+        replyToThread(channel, threadTs, ':tada: Successfully invited.');
       } else {
-        replyToThread(
-          channel,
-          threadTs,
-          ":point_down: Members have already joined this channel."
-        );
+        replyToThread(channel, threadTs, ':point_down: Members have already joined this channel.');
       }
     } else {
-      replyToThread(
-        channel,
-        threadTs,
-        ":warning: Cluster Member does not exist."
-      );
+      replyToThread(channel, threadTs, ':warning: Cluster Member does not exist.');
     }
   } else {
-    replyToThread(channel, threadTs, ":warning:Cluster does not exist.");
+    replyToThread(channel, threadTs, ':warning:Cluster does not exist.');
   }
 };
 
-const kickCmd = async event => {
-  const clusterName = event.text
-    .split(/kick/i)[1]
-    .trim()
-    .split(" ")[0]
-    .trim();
+const kickCmd = async (event) => {
+  const clusterName = event.text.split(/kick/i)[1].trim().split(' ')[0].trim();
   const channel = event.channel;
   const threadTs = event.event_ts;
   const channelName = await webClient.channels.info({
@@ -201,6 +159,7 @@ const kickCmd = async event => {
             .catch(err => {
               console.log("====", err);
             });
+          
           const message = `<@${event.user}> kicked you from ${channelName.channel.name}\n :link: https://${SLACK_WORKSPACE}.slack.com/archives/${channel}/p${threadTs} `;
           await directMessage(user, message);
         } else if (user === event.user) {
@@ -209,14 +168,12 @@ const kickCmd = async event => {
               channel
             });
           } else {
-            await webClientLegacy.conversations
-              .kick({
-                user,
-                channel
-              })
-              .catch(err => {
-                console.log(err);
-              });
+            await webClientLegacy.conversations.kick({
+              user,
+              channel
+            }).catch((err) => {
+              console.log(err);
+            });
           }
         }
       });
@@ -224,11 +181,11 @@ const kickCmd = async event => {
       replyToThread(
         channel,
         threadTs,
-        `:warning: cluster ${clusterName}'s members do not exist here.`
+        `:warning: ${clusterName}'s members do not exist here.`
       );
     }
   } else {
-    replyToThread(channel, threadTs, ":warning:Cluster does not exist.");
+    replyToThread(channel, threadTs, ":warning: cluster doesn't exist.");
   }
 };
 
@@ -242,16 +199,16 @@ const listCmd = async slackEvent => {
     replyToThread(
       slackEvent.channel,
       slackEvent.ts,
-      ":warning:This cmd only DM."
+      ":warning: You can only use this command with the bot."
     );
     return;
   }
   let infoAllCluster = await cluster.find(nedb, gotClusterName);
   console.log(infoAllCluster);
   if (!infoAllCluster) {
-    replyToThread(slackEvent.channel, slackEvent.ts, "Nothing to return");
+    replyToThread(slackEvent.channel, slackEvent.ts, 'Nothing to return');
   } else {
-    let msg = "";
+    let msg = '';
     infoAllCluster = gotClusterName ? [infoAllCluster] : infoAllCluster;
     for (const data of infoAllCluster) {
       const members = data.members.map(member => `<@${member}>`);
@@ -261,13 +218,9 @@ const listCmd = async slackEvent => {
   }
 };
 
-const authorizeOnly = event => {
-  if (!SLACK_AUTHORIZE_USERS.includes(event.user)) {
-    replyToThread(
-      event.channel,
-      event.event_ts,
-      ":warning: only authorized users can use this command."
-    );
+const authorizeOnly = (event) => {
+  if (!SLACK_AUTHORIZE_USER.includes(event.user)) {
+    replyToThread(event.channel, event.event_ts, ':warning: Only Authorize user can use this command.');
     return false;
   }
   return true;
@@ -301,7 +254,7 @@ const directMessage = async (userId, msg) => {
 
 module.exports = {
   createCluster,
-  removeCluster,
+  deleteCluster,
   updateMembers,
   mentionCmd,
   inviteCmd,

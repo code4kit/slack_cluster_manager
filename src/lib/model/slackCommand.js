@@ -1,46 +1,45 @@
-'use strict';
+"use strict";
 
-require('dotenv').config();
+require("dotenv").config();
 
-const { WebClient } = require('@slack/client');
-const cluster = require('./cluster');
-const packageInfo = require('../../../package.json');
+const { WebClient } = require("@slack/client");
+const cluster = require("./cluster");
+const packageInfo = require("../../../package.json");
 
-const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
-
-const webClientUi = new WebClient(SLACK_BOT_TOKEN);
+/**
+ *SLACK_AUTHORIZE_USERS for authorizer user to cretae, update and remove the cluster
+ */
+const SLACK_AUTHORIZE_USERS = process.env.SLACK_AUTHORIZE_USERS.split(" ");
+const SLACK_USER_ID = process.env.SLACK_USER_ID;
+const SLACK_WORKSPACE = process.env.SLACK_WORKSPACE;
 
 const EMOJI = process.env.SLACK_EMOJI;
-/**
-*SLACK_AUTHORIZE_USER for authorizer user to cretae delete and update the cluster
-*/
-const SLACK_AUTHORIZE_USER = process.env.SLACK_AUTHORIZE_USER.split(' ');
 
-const webClientLegacy = new WebClient(process.env.LEGACY_TOKEN);
+const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
+const webClientUi = new WebClient(SLACK_BOT_TOKEN);
 
-const SLACK_USER_ID = process.env.SLACK_USER_ID;
+const SLACK_LEGACY_TOKEN = process.env.LEGACY_TOKEN;
+const webClientLegacy = new WebClient(SLACK_LEGACY_TOKEN);
 
-const webClient = new WebClient(process.env.SLACK_TOKEN);
+const SLACK_TOKEN = process.env.SLACK_TOKEN;
+const webClient = new WebClient(SLACK_TOKEN);
+
 /**
  * This connect to NeDB
  * @param {String}
  */
 const DB_PATH = process.env.DB_PATH;
 const SYSTEM_MODE = process.env.SYSTEM_MODE;
-const nedb = require('./_nedb')(
-  DB_PATH,
-  SYSTEM_MODE
-);
+const nedb = require("./_nedb")(DB_PATH, SYSTEM_MODE);
 
-const SLACK_WORKSPACE = process.env.SLACK_WORKSPACE;
-
-const createCluster = async (event) => {
+const createCluster = async event => {
   if (!authorizeOnly(event)) {
-    return '';
+    return "unauthorized user.";
   }
   const clusterName = event.text.split(/create/i)[1].trim();
-  const isVC = clusterName.includes('--vc');
-  const isBatch = clusterName.includes('--batch');
+  const isVC = clusterName.includes("--vc");
+  const isBatch = clusterName.includes("--batch");
+
   if (!isBatch || !isVC) {
     const msg = await cluster.createCluster(nedb, clusterName);
     replyToThread(event.channel, event.event_ts, msg);
@@ -67,6 +66,7 @@ const updateMembers = async (event) => {
   let slackMembers = await webClient.users.list({
     channel: event.channel
   });
+  
   slackMembers = slackMembers.members.filter((member) => !member.is_bot && member.id !== 'USLACKBOT').map(member => member.id);
   if (args.includes('here')) {
     const msg = await cluster.update(nedb, clusterName, slackMembers);
@@ -145,16 +145,21 @@ const kickCmd = async (event) => {
     const existingMembers = await webClient.conversations.members({
       channel
     });
-    const kickMemebers = targetCluster.members.filter((member) => { return existingMembers.members.includes(member); });
+    const kickMemebers = targetCluster.members.filter(member => {
+      return existingMembers.members.includes(member);
+    });
     if (kickMemebers.length !== 0) {
-      kickMemebers.forEach(async (user) => {
+      kickMemebers.forEach(async user => {
         if (user !== event.user) {
-          await webClient.conversations.kick({
-            channel,
-            user
-          }).catch((err) => {
-            console.log('====', err);
-          });
+          await webClient.conversations
+            .kick({
+              channel,
+              user
+            })
+            .catch(err => {
+              console.log("====", err);
+            });
+          
           const message = `<@${event.user}> kicked you from ${channelName.channel.name}\n :link: https://${SLACK_WORKSPACE}.slack.com/archives/${channel}/p${threadTs} `;
           await directMessage(user, message);
         } else if (user === event.user) {
@@ -173,17 +178,29 @@ const kickCmd = async (event) => {
         }
       });
     } else {
-      replyToThread(channel, threadTs, `:warning: cluster ${clusterName}'s members do not exist here.`);
+      replyToThread(
+        channel,
+        threadTs,
+        `:warning: ${clusterName}'s members do not exist here.`
+      );
     }
   } else {
-    replyToThread(channel, threadTs, ':warning:Cluster does not exist.');
+    replyToThread(channel, threadTs, ":warning: cluster doesn't exist.");
   }
 };
 
-const listCmd = async (slackEvent) => {
-  const gotClusterName = slackEvent.text.split(/list/i)[1].trim().split(' ')[0].trim();
-  if (slackEvent.channel[0] !== 'D') {
-    replyToThread(slackEvent.channel, slackEvent.ts, ':warning:This cmd only DM.');
+const listCmd = async slackEvent => {
+  const gotClusterName = slackEvent.text
+    .split(/list/i)[1]
+    .trim()
+    .split(" ")[0]
+    .trim();
+  if (slackEvent.channel[0] !== "D") {
+    replyToThread(
+      slackEvent.channel,
+      slackEvent.ts,
+      ":warning: You can only use this command with the bot."
+    );
     return;
   }
   let infoAllCluster = await cluster.find(nedb, gotClusterName);

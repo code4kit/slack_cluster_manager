@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 /**
  * @async
@@ -9,25 +9,33 @@
  */
 
 const update = async (nedb, clusterName, memberIds) => {
-  const existCluster = await nedb.asyncFindOne({
-    cluster_name: clusterName
-  }).catch((err) => {
-    console.log(err);
-  });
+  const existCluster = await nedb
+    .asyncFindOne({
+      cluster_name: clusterName
+    })
+    .catch(err => {
+      console.log(err);
+    });
 
   if (!existCluster) {
-    return `:warning: Cluster ${clusterName} not exist.`;
+    return `:warning: cluster ${clusterName} doesn't exist.`;
   } else if (memberIds.length === 0) {
-    return ':warning: Please Provide the memebers.';
+    return ":warning: At least 1 member must be specified.";
   } else {
     const existMemberIds = existCluster.members;
-    memberIds = memberIds.filter((member) => !existMemberIds.includes(member));
-    const updateMembers = existMemberIds.length !== 0 ? [...existMemberIds, ...memberIds] : [...memberIds];
-    await nedb.asyncUpdate({
-      cluster_name: clusterName
-    }, {
-      $set: { members: updateMembers }
-    });
+    memberIds = memberIds.filter(member => !existMemberIds.includes(member));
+    const updateMembers =
+      existMemberIds.length !== 0
+        ? [...existMemberIds, ...memberIds]
+        : [...memberIds];
+    await nedb.asyncUpdate(
+      {
+        cluster_name: clusterName
+      },
+      {
+        $set: { members: updateMembers }
+      }
+    );
     return `:tada: updated members to cluster ${clusterName}`;
   }
 };
@@ -42,8 +50,10 @@ const find = async (nedb, clusterName) => {
     const gotCluster = await nedb.asyncFindOne({
       cluster_name: clusterName
     });
+
     return gotCluster;
   }
+
   const allCluster = await nedb.asyncFind({});
   return allCluster;
 };
@@ -53,6 +63,7 @@ const findMembers = async (nedb, clusterName) => {
     const gotCluster = await nedb.asyncFindOne({
       cluster_name: clusterName
     });
+    
     return gotCluster;
   }
 };

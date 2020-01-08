@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 /**
  * @author Shion0625
  * @author gittanaka
@@ -13,10 +13,8 @@
 
 const main = (req, res) => {
   res.writeHead(200, {
-    'Content-Type': 'text/html; charset=utf-8'
+    "Content-Type": "text/html; charset=utf-8"
   });
-  res.write('created server');
-  res.end();
 };
 
 module.exports = main;

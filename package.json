@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "add-text-to-markdown": "^2.0.0",
-    "chai": "^4.2.0",
+    "chai": "4.3.6",
     "commitizen": "^4.0.3",
     "cz-emoji": "^1.1.2",
     "documentation": "^12.1.3",
